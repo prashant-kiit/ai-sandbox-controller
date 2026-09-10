@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 import docker
 from fastapi import FastAPI, HTTPException
@@ -18,16 +19,24 @@ def get_container(vm_id: str):
 
 
 @app.post("/vms")
-def create_vm():
+def create_vm(publish_port: Optional[int] = None):
     vm_id = f"sandbox-{uuid.uuid4().hex[:8]}"
+    ports = {f"{publish_port}/tcp": None} if publish_port else None
+
     container = client.containers.run(
         SANDBOX_IMAGE,
         name=vm_id,
         detach=True,
         tty=True,
+        ports=ports,
         labels={"managed-by": LABEL},
     )
-    return {"vm_id": vm_id, "status": container.status}
+    container.reload()
+    host_port = None
+    if publish_port:
+        binding = container.ports.get(f"{publish_port}/tcp")
+        host_port = binding[0]["HostPort"] if binding else None
+    return {"vm_id": vm_id, "status": container.status, "host_port": host_port}
 
 
 @app.get("/vms")

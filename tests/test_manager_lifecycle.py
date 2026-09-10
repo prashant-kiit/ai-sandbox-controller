@@ -38,3 +38,25 @@ def test_vm_fixture_creates_and_cleans_up(vm, base_url):
     list_resp = requests.get(f"{base_url}/vms")
     vm_ids = [v["vm_id"] for v in list_resp.json()]
     assert vm in vm_ids
+
+
+def test_create_vm_with_publish_port(base_url):
+    create_resp = requests.post(f"{base_url}/vms", params={"publish_port": 8080})
+    assert create_resp.status_code == 200
+    body = create_resp.json()
+    vm_id = body["vm_id"]
+    try:
+        assert body["host_port"] is not None
+        int(body["host_port"])  # host_port is a real port number
+    finally:
+        requests.delete(f"{base_url}/vms/{vm_id}")
+
+
+def test_create_vm_without_publish_port_has_no_host_port(base_url):
+    create_resp = requests.post(f"{base_url}/vms")
+    body = create_resp.json()
+    vm_id = body["vm_id"]
+    try:
+        assert body["host_port"] is None
+    finally:
+        requests.delete(f"{base_url}/vms/{vm_id}")
