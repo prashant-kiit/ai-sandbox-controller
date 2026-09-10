@@ -39,7 +39,7 @@ plan time. Freeze boundary = the only paths a milestone may touch.
 
 | # | Milestone | Guide step(s) | Freeze boundary | Demo command | Status |
 |---|---|---|---|---|---|
-| 1 | Project scaffold, deps | 4 | `agent/__init__.py`, `tools/__init__.py`, `sandbox/__init__.py`, `requirements.txt`, `.venv/` | `pip list \| grep -E "fastapi\|docker\|anthropic\|pydantic\|uvicorn\|pytest"` | pending |
+| 1 | Project scaffold, deps | 4 | `agent/__init__.py`, `tools/__init__.py`, `sandbox/__init__.py`, `requirements.txt`, `.venv/` | `pip list \| grep -E "fastapi\|docker\|anthropic\|pydantic\|uvicorn\|pytest"` | done |
 | 2 | Agent core loop, no tools | 5 | `agent/llm_client.py`, `agent/agent.py` | `python3 -m agent.agent` | pending |
 | 3 | Tool schema | 6 | `tools/schema.py`, `tests/__init__.py`, `tests/test_schema.py` | `pytest tests/test_schema.py -v` | pending |
 | 4 | Sandbox manager lifecycle + Dockerfile | 7 | `sandbox/Dockerfile`, `sandbox/manager.py`, `tests/conftest.py`, `tests/test_manager_lifecycle.py` | `pytest tests/test_manager_lifecycle.py -v` | pending |
