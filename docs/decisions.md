@@ -53,6 +53,46 @@ re-derive intent from the code.
   Docker-in-Docker and a real API key as a repo secret — more setup than this
   pass needs. Local-only for now.
 
+## Provider pivot (amendment, 2026-09-11)
+
+- **LLM provider switched from Anthropic (Claude) to OpenAI, effective
+  milestone 2 onward.** The Anthropic account available for this build hit
+  two hard blockers when milestone 2's demo command (`python3 -m
+  agent.agent`) made a real call: first an API key not scoped to a
+  workspace (`anthropic-workspace-id` required), then — after swapping to a
+  workspace-scoped key — insufficient account credit. Both are account-side,
+  not fixable from code. The user directed a switch to OpenAI rather than
+  waiting on the Anthropic account.
+- **This supersedes the "Model is configurable" bullet above.** `LLMClient`
+  now reads `OPENAI_MODEL` (was `ANTHROPIC_MODEL`), falling back to
+  `gpt-4o` (was `claude-sonnet-5`) if unset. `OPENAI_API_KEY` replaces
+  `ANTHROPIC_API_KEY` as the required credential. The single-source-of-
+  resolution rule is unchanged: it still lives in exactly one place,
+  `agent/llm_client.py`.
+- **SDK: `openai` package replaces `anthropic`** in `requirements.txt`,
+  version resolved fresh the same way (see "Dependency versions" above).
+- **Tool-calling format changes starting at milestone 3
+  (`tools/schema.py`).** OpenAI's function-calling schema
+  (`{"type": "function", "function": {"name", "description", "parameters"}}`)
+  replaces Anthropic's flat `{"name", "description", "input_schema"}` shape
+  from `design-guide.md` Step 6. The three tools (`run_command`,
+  `write_file`, `read_file`) and their semantics are unchanged — only the
+  JSON envelope differs.
+- **Agent loop message format changes starting at milestone 8
+  (`agent/agent.py`'s final ReAct loop).** OpenAI's chat-completions
+  conventions (`role: system/user/assistant/tool`, `response.choices[0]
+  .message.tool_calls`, `tool_call_id`) replace Anthropic's content-block
+  conventions (`response.content` blocks of type `tool_use`/`tool_result`)
+  from `design-guide.md` Step 11. `tools/executor.py`'s dispatch table
+  (name + input dict → sandbox action) is provider-agnostic and does not
+  change.
+- **`docs/design-guide.md` is not edited.** It stays as the original
+  Anthropic-based course text (locked input, per the harness's own rule).
+  This amendment plus each affected milestone's "Build order" entry in
+  `docs/implementation-plan.md` are what capture the divergence from here
+  on — the guide is read as "this is the shape, adapted for OpenAI's API,"
+  not followed for literal SDK calls once milestone 2 is reached.
+
 ## Process
 
 - **One git commit per design-guide step** (or small logical group of related

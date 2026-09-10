@@ -16,6 +16,13 @@ that design-guide.md already fully specifies — it references step numbers
 for anything that matches the guide exactly, and only spells out code where
 the final result must differ from the guide's literal snippet.
 
+**Mid-build amendment (2026-09-11):** the LLM provider switched from
+Anthropic to OpenAI partway through milestone 2 — see decisions.md's
+"Provider pivot" section for why and exactly what changes (env vars, SDK,
+tool-schema envelope, agent-loop message shape). Milestones 2, 3, and 8's
+"Build order" entries below already reflect this; guide step numbers still
+apply for scope/rationale, just not for literal Claude-specific code.
+
 Environment at plan time (repo root: `/Users/prashant/Desktop/Project/ai-sandbox-controller`):
 Docker daemon not running, no `.venv`, no `ANTHROPIC_API_KEY` set, no
 implementation code yet — only `docs/`, `README.md`, `LICENSE`,
@@ -70,26 +77,37 @@ at the cited step **except** where a divergence is called out explicitly.
 - Test: `pip list | grep -E "fastapi|docker|anthropic|pydantic|uvicorn|pytest"`.
 
 **2 — Agent core loop, no tools yet (Step 5)**
-- `agent/llm_client.py`: **diverges from the guide.** `LLMClient` resolves
-  its model from `ANTHROPIC_MODEL` with `claude-sonnet-5` fallback, not a
-  hardcoded default parameter:
+- **Diverges from the guide per decisions.md's "Provider pivot" amendment:
+  OpenAI, not Anthropic.** `agent/llm_client.py`'s `LLMClient` wraps the
+  `openai` SDK and resolves its model from `OPENAI_MODEL` with `gpt-4o`
+  fallback, not a hardcoded default parameter:
   ```python
   def __init__(self, model: str | None = None):
-      self.client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-      self.model = model or os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+      self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+      self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
   ```
-- `agent/agent.py` (v1, no tools): `Agent.__init__` must **not** hardcode
-  `model: str = "claude-sonnet-5"`. Take `model: str | None = None` and pass
-  straight through to `LLMClient(model=model)` — the env lookup lives in
-  exactly one place (`llm_client.py`).
-- Test: `python3 -m agent.agent` — real call, requires `ANTHROPIC_API_KEY` in
+  `call()` uses `self.client.chat.completions.create(...)`, not Claude's
+  `messages.create(...)` — same "thin wrapper, always accepts an optional
+  `tools` list" shape as the guide, different SDK underneath.
+- `agent/agent.py` (v1, no tools): `Agent.__init__` must **not** hardcode a
+  model default. Take `model: str | None = None` and pass straight through
+  to `LLMClient(model=model)` — the env lookup lives in exactly one place
+  (`llm_client.py`). Reading the reply is `response.choices[0].message
+  .content` (OpenAI shape), not the guide's `response.content` block list.
+- Test: `python3 -m agent.agent` — real call, requires `OPENAI_API_KEY` in
   the shell. Confirms the API connection works before anything else is built.
 
 **3 — Tool schema (Step 6)**
-- `tools/schema.py`: exactly as guide, no divergence.
+- `tools/schema.py`: **diverges from the guide per the provider pivot.**
+  Same three tools (`run_command`, `write_file`, `read_file`), same
+  descriptions and parameters, but wrapped in OpenAI's function-calling
+  envelope (`{"type": "function", "function": {"name", "description",
+  "parameters"}}`) instead of Anthropic's flat `{"name", "description",
+  "input_schema"}` shape.
 - Introduce `tests/` here (first pytest file, zero external deps):
   `tests/test_schema.py::test_tools_schema_shape` replaces the guide's
-  throwaway assert script.
+  throwaway assert script, updated to check the OpenAI envelope shape
+  (`t["function"]["name"]`, not `t["name"]`).
 
 **4 — Sandbox manager lifecycle + Dockerfile (Step 7)**
 - `sandbox/Dockerfile`: identical to guide. Confirmed: flattening the repo
@@ -128,9 +146,17 @@ at the cited step **except** where a divergence is called out explicitly.
   fixture should not repeat that leak.
 
 **8 — Full agent loop + run.py (Step 11)**
-- `agent/agent.py` final version (ReAct loop) — same `ANTHROPIC_MODEL`
+- `agent/agent.py` final version (ReAct loop) — same `OPENAI_MODEL`
   divergence as commit 2 applies again; make sure it survives into this
-  version, not just the throwaway v1. `run.py` exactly per guide.
+  version, not just the throwaway v1. **Diverges from the guide per the
+  provider pivot:** the loop reads `response.choices[0].message.tool_calls`
+  (OpenAI) instead of filtering `response.content` for `tool_use` blocks
+  (Anthropic); tool results are appended as `{"role": "tool", "tool_call_id":
+  ..., "content": ...}` messages instead of a `tool_result` content block;
+  each `tool_call.function.arguments` is a JSON string requiring
+  `json.loads` before it reaches `ToolExecutor.execute`, unlike Anthropic's
+  already-parsed `block.input` dict. `run.py` unchanged from guide shape
+  (just instantiates `Agent` and calls `run`/`cleanup`).
 - No new pytest here: driving the full LLM loop in the automated suite would
   be nondeterministic and token-costly, and decisions.md's pytest scope is
   sandbox-layer only (lifecycle, commands/files, snapshot/restore). This
@@ -178,11 +204,12 @@ tests/
 
 `tests/conftest.py`:
 - Session-scoped autouse fixture asserting `docker.from_env().ping()`
-  succeeds and `ANTHROPIC_API_KEY` is set — raises immediately (not
+  succeeds and `OPENAI_API_KEY` is set — raises immediately (not
   `pytest.skip`) per decisions.md's "no skip logic, fail loudly" rule. This
   is a blanket precondition for the whole suite, even though the manager
   itself only needs Docker (the API key requirement matches decisions.md's
-  wording exactly rather than being scoped per-test).
+  wording exactly rather than being scoped per-test). Env var updated per
+  the "Provider pivot" amendment (was `ANTHROPIC_API_KEY`).
 - Session-scoped fixture that builds `ai-sandbox:latest` if missing, so
   `pytest` alone is sufficient from a clean checkout (mirrors the guide's
   "clone and run" spirit).
@@ -198,7 +225,7 @@ tests/
 ## Commit list
 
 1. `Add project scaffold, package inits, and dependencies (Step 4)`
-2. `Add agent core loop with configurable model via ANTHROPIC_MODEL (Step 5)`
+2. `Add agent core loop (OpenAI) with configurable model via OPENAI_MODEL (Step 5)`
 3. `Add tool schema and schema test (Step 6)`
 4. `Add sandbox manager lifecycle endpoints, Dockerfile, and lifecycle tests (Step 7)`
 5. `Add sandbox port publishing and storage/network notes (Step 8)`
@@ -225,7 +252,7 @@ pip install -r requirements.txt
 docker build -t ai-sandbox:latest -f sandbox/Dockerfile sandbox/
 
 # 3. Credentials (user's own shell)
-export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
 
 # 4. Automated suite (self-sufficient: builds image if missing, starts manager itself)
 pytest -v
@@ -245,12 +272,12 @@ python3 demo_snapshot.py            # shows buggy version, then restored clean v
 # 9. Cleanup check
 curl http://localhost:8000/vms      # []
 
-# 10. Prove the ANTHROPIC_MODEL deviation is actually wired, not just documented
-ANTHROPIC_MODEL="claude-opus-4-8" python3 -c "from agent.llm_client import LLMClient; print(LLMClient().model)"
-# claude-opus-4-8
-unset ANTHROPIC_MODEL
+# 10. Prove the OPENAI_MODEL deviation is actually wired, not just documented
+OPENAI_MODEL="gpt-4o-mini" python3 -c "from agent.llm_client import LLMClient; print(LLMClient().model)"
+# gpt-4o-mini
+unset OPENAI_MODEL
 python3 -c "from agent.llm_client import LLMClient; print(LLMClient().model)"
-# claude-sonnet-5
+# gpt-4o
 ```
 
 Success = guide's own Step 15 result block, plus: pytest suite green with
@@ -259,7 +286,9 @@ actually works.
 
 ## Critical files
 
-- `agent/llm_client.py`, `agent/agent.py` — model-resolution divergence
+- `agent/llm_client.py`, `agent/agent.py` — provider (OpenAI, not
+  Anthropic) and model-resolution divergence; see decisions.md's
+  "Provider pivot" amendment
 - `sandbox/manager.py`, `sandbox/client.py` — core REST surface
 - `tools/executor.py`, `tools/schema.py`
 - `requirements.txt` — version divergence
