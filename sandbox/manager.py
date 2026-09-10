@@ -23,6 +23,10 @@ class FileWriteRequest(BaseModel):
     content: str
 
 
+class SnapshotRequest(BaseModel):
+    snapshot_id: str
+
+
 def get_container(vm_id: str):
     try:
         return client.containers.get(vm_id)
@@ -108,6 +112,27 @@ def read_file(vm_id: str, path: str):
         member = tar.getmembers()[0]
         content = tar.extractfile(member).read()
     return {"path": path, "content": content.decode(errors="replace")}
+
+
+@app.post("/vms/{vm_id}/snapshots")
+def snapshot_vm(vm_id: str, req: SnapshotRequest):
+    container = get_container(vm_id)
+    image = container.commit(repository="sandbox-snapshot", tag=req.snapshot_id)
+    return {"vm_id": vm_id, "snapshot_id": req.snapshot_id, "image_id": image.id}
+
+
+@app.post("/vms/{vm_id}/restore")
+def restore_vm(vm_id: str, req: SnapshotRequest):
+    old = get_container(vm_id)
+    old.remove(force=True)
+    new = client.containers.run(
+        f"sandbox-snapshot:{req.snapshot_id}",
+        name=vm_id,
+        detach=True,
+        tty=True,
+        labels={"managed-by": LABEL},
+    )
+    return {"vm_id": vm_id, "restored_from": req.snapshot_id, "status": new.status}
 
 
 @app.get("/health")

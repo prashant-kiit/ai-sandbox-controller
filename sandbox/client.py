@@ -29,3 +29,13 @@ class SandboxClient:
         r = requests.get(f"{self.base_url}/vms/{vm_id}/files", params={"path": path})
         r.raise_for_status()
         return r.json()["content"]
+
+    def snapshot(self, vm_id: str, snapshot_id: str) -> dict:
+        r = requests.post(f"{self.base_url}/vms/{vm_id}/snapshots", json={"snapshot_id": snapshot_id})
+        r.raise_for_status()
+        return r.json()
+
+    def restore(self, vm_id: str, snapshot_id: str) -> dict:
+        r = requests.post(f"{self.base_url}/vms/{vm_id}/restore", json={"snapshot_id": snapshot_id})
+        r.raise_for_status()
+        return r.json()
