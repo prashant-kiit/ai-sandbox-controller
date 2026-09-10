@@ -13,6 +13,14 @@ client = docker.from_env()
 SANDBOX_IMAGE = "ai-sandbox:latest"
 LABEL = "ai-sandbox"
 
+SANDBOX_RUNTIME_OPTS = dict(
+    mem_limit="512m",
+    nano_cpus=1_000_000_000,       # 1 vCPU worth of quota (cgroups)
+    cap_drop=["ALL"],              # start from zero Linux capabilities
+    security_opt=["no-new-privileges"],  # a process can't gain more privilege than it started with
+    pids_limit=256,                # cap process count (fork-bomb protection)
+)
+
 
 class CommandRequest(BaseModel):
     command: str
@@ -46,6 +54,7 @@ def create_vm(publish_port: Optional[int] = None):
         tty=True,
         ports=ports,
         labels={"managed-by": LABEL},
+        **SANDBOX_RUNTIME_OPTS,
     )
     container.reload()
     host_port = None
@@ -131,6 +140,7 @@ def restore_vm(vm_id: str, req: SnapshotRequest):
         detach=True,
         tty=True,
         labels={"managed-by": LABEL},
+        **SANDBOX_RUNTIME_OPTS,
     )
     return {"vm_id": vm_id, "restored_from": req.snapshot_id, "status": new.status}
 
