@@ -21,11 +21,14 @@ Sourced from `docs/design-guide.md` (architecture rationale) and
    `requests` or `docker` calls.** It's a dispatch table, not a second
    client implementation.
 4. **Model resolution lives in exactly one place: `agent/llm_client.py`.**
-   Reads `OPENAI_MODEL` env var, falls back to `gpt-4o`. `agent/agent.py`
+   Reads `OPENAI_MODEL` env var, falls back to `gpt-5`. `agent/agent.py`
    must not hardcode a model default of its own — it passes `model=None`
    through and lets `LLMClient` resolve it. (decisions.md's "Provider
    pivot" amendment — originally `ANTHROPIC_MODEL`/`claude-sonnet-5` before
-   the Anthropic→OpenAI switch at milestone 2.)
+   the Anthropic→OpenAI switch at milestone 2 — then decisions.md's
+   "Default model amendment" changed the fallback again from `gpt-4o` to
+   `gpt-5` at milestone 10, after `gpt-4o` proved unreliable at driving
+   `demo_snapshot.py`'s natural-language task end to end.)
 5. **`SANDBOX_RUNTIME_OPTS` (cap_drop, mem_limit, nano_cpus, security_opt,
    pids_limit) is applied to every place a container is created —
    `create_vm` AND `restore_vm`.** The guide's own Step 10 snippet omits it

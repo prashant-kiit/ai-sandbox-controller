@@ -7,7 +7,7 @@ class LLMClient:
 
     def __init__(self, model: str | None = None):
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
+        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5")
 
     def call(self, messages, tools=None, system=None):
         full_messages = ([{"role": "system", "content": system}] if system else []) + messages

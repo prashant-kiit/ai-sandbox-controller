@@ -44,11 +44,15 @@ re-derive intent from the code.
 - **A pytest suite is added**, beyond the guide's manual curl/script tests,
   covering the same scenarios: VM create/list/delete/health, run_command,
   read_file/write_file, and snapshot/restore round-trips.
-- **Integration-style, not mocked.** Tests hit a real Docker daemon and make
-  real Anthropic API calls — same behavior as the guide's manual tests, just
-  automated.
+- **Integration-style, not mocked.** Tests hit a real Docker daemon — same
+  behavior as the guide's manual tests, just automated. (Originally written
+  as "real Anthropic API calls" before the "Provider pivot" amendment;
+  updated for OpenAI. In practice the sandbox-layer test suite itself never
+  calls the LLM at all — only `run.py`/`demo_snapshot.py` do — but the
+  precondition below still requires the credential per this section's
+  original wording.)
 - **No skip logic.** Tests always require Docker running and
-  `ANTHROPIC_API_KEY` set; they fail loudly (not skip) if either is missing.
+  `OPENAI_API_KEY` set; they fail loudly (not skip) if either is missing.
 - **No CI workflow.** Running tests in GitHub Actions would need
   Docker-in-Docker and a real API key as a repo secret — more setup than this
   pass needs. Local-only for now.
@@ -92,6 +96,29 @@ re-derive intent from the code.
   `docs/implementation-plan.md` are what capture the divergence from here
   on — the guide is read as "this is the shape, adapted for OpenAI's API,"
   not followed for literal SDK calls once milestone 2 is reached.
+
+## Default model amendment (2026-09-11)
+
+- **`OPENAI_MODEL`'s fallback changed from `gpt-4o` to `gpt-5`,
+  discovered and fixed during milestone 10's verification.** Running
+  `demo_snapshot.py` (unmodified, exactly per guide) against the default
+  `gpt-4o` fallback failed to reliably complete the "introduce a bug"
+  step in 3 consecutive real runs — the model described the intended
+  change in prose instead of calling `write_file`, apparently because the
+  task text doesn't name the file and `gpt-4o` is less willing than
+  Claude (the guide's original model) to infer or explore for it. The
+  same unmodified script with `OPENAI_MODEL=gpt-5` succeeded on the first
+  try, including using `run_command` to inspect the sandbox first. The
+  underlying snapshot/restore mechanism was never in question — milestone
+  7's pytest suite already proves that round trip deterministically via
+  direct tool calls, bypassing the LLM entirely.
+- **This supersedes the "Provider pivot" amendment's `gpt-4o` fallback
+  above.** `agent/llm_client.py` now reads `OPENAI_MODEL`, falling back
+  to `gpt-5` if unset. `OPENAI_API_KEY` requirement and the
+  single-source-of-resolution rule are unchanged.
+- No code outside `agent/llm_client.py` changes because of this — it's a
+  one-line default-value edit, not a shape change like the provider
+  pivot's tool-schema/message-format divergences.
 
 ## Process
 

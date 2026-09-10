@@ -79,13 +79,17 @@ at the cited step **except** where a divergence is called out explicitly.
 **2 — Agent core loop, no tools yet (Step 5)**
 - **Diverges from the guide per decisions.md's "Provider pivot" amendment:
   OpenAI, not Anthropic.** `agent/llm_client.py`'s `LLMClient` wraps the
-  `openai` SDK and resolves its model from `OPENAI_MODEL` with `gpt-4o`
-  fallback, not a hardcoded default parameter:
+  `openai` SDK and resolves its model from `OPENAI_MODEL` with a fallback,
+  not a hardcoded default parameter:
   ```python
   def __init__(self, model: str | None = None):
       self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-      self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
+      self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5")
   ```
+  (The fallback was originally `gpt-4o` at the time this milestone was
+  built; decisions.md's "Default model amendment" changed it to `gpt-5`
+  at milestone 10 after `gpt-4o` proved unreliable driving
+  `demo_snapshot.py`'s natural-language task end to end.)
   `call()` uses `self.client.chat.completions.create(...)`, not Claude's
   `messages.create(...)` — same "thin wrapper, always accepts an optional
   `tools` list" shape as the guide, different SDK underneath.
@@ -179,10 +183,11 @@ at the cited step **except** where a divergence is called out explicitly.
   - No `cd ai-agent-sandbox` anywhere (repo root is the project).
   - Keep `docker build -f sandbox/Dockerfile sandbox/` unchanged.
   - Add `python3 -m venv .venv && source .venv/bin/activate` explicitly.
-  - Document `ANTHROPIC_MODEL` as an optional env var alongside
-    `ANTHROPIC_API_KEY`.
+  - Document `OPENAI_MODEL` as an optional env var alongside
+    `OPENAI_API_KEY` (updated per decisions.md's "Provider pivot"
+    amendment — originally `ANTHROPIC_MODEL`/`ANTHROPIC_API_KEY`).
   - Add a "Tests" section: `pytest` requires Docker running and
-    `ANTHROPIC_API_KEY` set, fails loudly (no skip) if either is missing.
+    `OPENAI_API_KEY` set, fails loudly (no skip) if either is missing.
   - Reference `docs/design-guide.md` Step 17 as "documented, not
     implemented" rather than duplicating its content.
 
@@ -277,7 +282,7 @@ OPENAI_MODEL="gpt-4o-mini" python3 -c "from agent.llm_client import LLMClient; p
 # gpt-4o-mini
 unset OPENAI_MODEL
 python3 -c "from agent.llm_client import LLMClient; print(LLMClient().model)"
-# gpt-4o
+# gpt-5
 ```
 
 Success = guide's own Step 15 result block, plus: pytest suite green with
