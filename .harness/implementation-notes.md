@@ -6,11 +6,7 @@ per milestone; this file tracks the narrative behind status changes.
 
 ## Status
 
-Milestone 9 of 10 done. Project scaffold, dependencies, agent core loop
-(OpenAI-based, post-pivot), tool schema, sandbox manager lifecycle, port
-publishing, command/file endpoints + client + executor, snapshot/
-restore, the full ReAct agent loop + run.py, and security hardening +
-scaling notes committed.
+BUILD COMPLETE. All 10 of 10 milestones done, committed, and G4-approved.
 
 ## What is actually built & live
 
@@ -27,6 +23,7 @@ scaling notes committed.
 | Snapshot/restore (`snapshot_vm`, `restore_vm`, client methods) + leak-free image cleanup | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | done | `pytest tests/test_manager_snapshot_restore.py -v` (1 passed) + full suite 13 passed + confirmed no leaked `sandbox-snapshot` image + G4 subagent APPROVE |
 | Full ReAct agent loop (OpenAI tool_calls shape) + run.py | `agent/agent.py`, `run.py` | done | Real end-to-end `python3 run.py` trace (write_file -> run_command -> final answer -> cleanup) + G4 subagent independently re-ran the same demo |
 | Security hardening (`SANDBOX_RUNTIME_OPTS` on both `create_vm` and `restore_vm`) | `sandbox/manager.py` | done | `pytest tests/test_manager_security.py -v` (2 passed, including a restore-then-check-hardening test) + full suite 15 passed + G4 subagent explicitly confirmed both call sites |
+| Consolidation (`demo_snapshot.py`, README rewrite) + default model fix (`gpt-4o`->`gpt-5`) | `demo_snapshot.py`, `README.md`, `agent/llm_client.py` | done | Full verification sequence run for real (build, pytest 15 passed, run.py, demo_snapshot.py, cleanup check, env-var override check) + G4 subagent independently ran the entire sequence itself |
 
 ## Deviations from plan (append-only)
 
@@ -37,11 +34,15 @@ scaling notes committed.
 
 ## Known gaps & ordered next list
 
-1. Run G0 + L1 BUILD on milestone 10 (final milestone — consolidation: `demo_snapshot.py` + README, Steps 14-16). Demo command is `python3 demo_snapshot.py` plus the full "Verification" sequence in the plan (venv setup, image build, `pytest -v`, manager + `run.py`, `demo_snapshot.py`, cleanup check, and the two `ANTHROPIC_MODEL`→`OPENAI_MODEL` override checks — remember to use `OPENAI_MODEL`/`gpt-4o`/`gpt-4o-mini` in that last check, not the guide's literal Anthropic env vars). README needs a from-scratch rewrite per the plan's Step 14 divergence list (no `cd ai-agent-sandbox`, explicit venv activation, `OPENAI_MODEL`/`OPENAI_API_KEY` documented instead of Anthropic's, a "Tests" section, Step 17 referenced as documented-not-implemented).
-2. `tests/conftest.py`'s `vm` fixture is intentionally raw-HTTP-based (not `SandboxClient`) since its freeze boundary is milestone 4 only — this is fine; later milestones' own tests instantiate `SandboxClient` directly where needed instead of changing the shared fixture.
+None — build complete. If a future session wants to extend this project
+beyond the 10-milestone plan, the natural next step documented but not
+implemented is `docs/design-guide.md` Step 17 (browser/computer-use
+sandbox via VNC, and exposing the sandbox over MCP) — see decisions.md's
+scope note and the README's "Extensions not implemented here" section.
 
 ## Session log (append-only, newest first)
 
+- 2026-09-11 — Milestone 10 (final — consolidation: demo_snapshot.py + README) built, verified (G4 APPROVE — the verify subagent independently ran the ENTIRE verification sequence itself, including its own demo_snapshot.py attempt), and committed as `e00e29c`. **BUILD COMPLETE — all 10 milestones done.** `demo_snapshot.py` is exactly per guide, no divergence. README rewritten for the flattened layout. While running this milestone's own verification, discovered `gpt-4o` (the default model chosen at milestone 2) failed 3/3 real runs at reliably completing `demo_snapshot.py`'s natural-language "introduce a bug" step — it described the change in prose instead of calling `write_file`. Surfaced to the user, who chose to switch the default; `agent/llm_client.py`'s `OPENAI_MODEL` fallback changed from `gpt-4o` to `gpt-5`, and the identical script then succeeded immediately. Documented as a new dated "Default model amendment" in decisions.md (the "Provider pivot" amendment's `gpt-4o` mention is superseded, not deleted, to keep the historical record honest). Full verification sequence run for real end-to-end: build, `pytest -v` (15 passed), manager health check, `run.py`, `demo_snapshot.py` (bug introduced then correctly restored), cleanup check (`/vms` → `[]`), and both `OPENAI_MODEL` override checks.
 - 2026-09-11 — Milestone 9 (security hardening + scaling notes) built, verified (G4 APPROVE — the verify subagent explicitly confirmed `SANDBOX_RUNTIME_OPTS` on both `create_vm` and `restore_vm`, then re-ran the tests and full suite), and committed as `2be4704`. No divergence from the guide. The restore-then-check-hardening test (`test_restored_vm_also_denies_privileged_mount`) is the one that would actually catch a missing opts application on `restore_vm` — both it and the base mount-denial test passed. Step 13's scaling discussion folded into the commit message (no separate empty-diff commit). `pytest tests/test_manager_security.py -v` → 2 passed; full suite → 15 passed, no regressions; no leftover containers or `sandbox-snapshot` images.
 - 2026-09-11 — Milestone 8 (full agent loop + run.py) built, verified (G4 APPROVE — the verify subagent independently re-ran the real end-to-end demo), and committed as `438d120`. Implements the OpenAI message-shape divergence documented since milestone 2: `response.choices[0].message.tool_calls`, `{"role": "tool", "tool_call_id": ...}` results, `json.loads` on `function.arguments`. No hardcoded model default (invariant 4); `agent/` still never imports `docker` directly (invariant 1). No new pytest (decisions.md scope, nondeterministic/token-costly) — verified via a real `uvicorn` + `python3 run.py` run producing a full clean trace, no leftover containers.
 - 2026-09-11 — Milestone 7 (snapshot & restore) built, verified (G4 APPROVE — the verify subagent independently re-ran the test, checked directly for the snapshot-image leak, and re-ran the full suite), and committed as `7181c20`. No divergence from the guide. `snapshot_vm`/`restore_vm` and client `snapshot`/`restore` methods added exactly per guide. `tests/test_manager_snapshot_restore.py` reproduces the bug-then-restore scenario with a dedicated `snapshot_tag` fixture that removes the `sandbox-snapshot:<tag>` image via the Docker SDK in teardown — confirmed no leaked image after the run (`docker images | grep sandbox-snapshot` empty). `pytest tests/test_manager_snapshot_restore.py -v` → 1 passed; full suite → 13 passed, no regressions.

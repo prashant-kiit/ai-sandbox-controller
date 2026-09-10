@@ -55,7 +55,7 @@ plan time. Freeze boundary = the only paths a milestone may touch.
 | 7 | Snapshot & restore | 10 | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | `pytest tests/test_manager_snapshot_restore.py -v` | done |
 | 8 | Full agent loop + run.py | 11 | `agent/agent.py`, `run.py` | `python3 run.py` (manager running in a second terminal) | done |
 | 9 | Security hardening + scaling notes | 12-13 | `sandbox/manager.py` (`SANDBOX_RUNTIME_OPTS`), `tests/test_manager_security.py` | `pytest tests/test_manager_security.py -v` | done |
-| 10 | Consolidation: demo_snapshot.py + README | 14-16 | `demo_snapshot.py`, `README.md` | `python3 demo_snapshot.py` + full verification sequence below | pending |
+| 10 | Consolidation: demo_snapshot.py + README | 14-16 | `demo_snapshot.py`, `README.md` | `python3 demo_snapshot.py` + full verification sequence below | done |
 
 Commit messages for each milestone are listed in "Commit list" below;
 `.harness/LOOPS.md` uses the milestone number to look up both.
