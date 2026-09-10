@@ -49,7 +49,7 @@ plan time. Freeze boundary = the only paths a milestone may touch.
 | 1 | Project scaffold, deps | 4 | `agent/__init__.py`, `tools/__init__.py`, `sandbox/__init__.py`, `requirements.txt`, `.venv/` | `pip list \| grep -E "fastapi\|docker\|anthropic\|pydantic\|uvicorn\|pytest"` | done |
 | 2 | Agent core loop, no tools | 5 | `agent/llm_client.py`, `agent/agent.py` | `python3 -m agent.agent` | done |
 | 3 | Tool schema | 6 | `tools/schema.py`, `tests/__init__.py`, `tests/test_schema.py` | `pytest tests/test_schema.py -v` | done |
-| 4 | Sandbox manager lifecycle + Dockerfile | 7 | `sandbox/Dockerfile`, `sandbox/manager.py`, `tests/conftest.py`, `tests/test_manager_lifecycle.py` | `pytest tests/test_manager_lifecycle.py -v` | pending |
+| 4 | Sandbox manager lifecycle + Dockerfile | 7 | `sandbox/Dockerfile`, `sandbox/manager.py`, `tests/conftest.py`, `tests/test_manager_lifecycle.py` | `pytest tests/test_manager_lifecycle.py -v` | done |
 | 5 | Storage/networking + port publishing | 8 | `sandbox/manager.py` (`create_vm`), `tests/test_manager_lifecycle.py` | `curl -X POST "http://localhost:8000/vms?publish_port=8080"` + pytest case | pending |
 | 6 | Command/file endpoints + client + executor | 9 | `sandbox/manager.py`, `sandbox/client.py`, `tools/executor.py`, `tests/test_manager_commands_and_files.py` | `pytest tests/test_manager_commands_and_files.py -v` | pending |
 | 7 | Snapshot & restore | 10 | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | `pytest tests/test_manager_snapshot_restore.py -v` | pending |
