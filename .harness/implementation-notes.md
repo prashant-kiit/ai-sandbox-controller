@@ -6,9 +6,10 @@ per milestone; this file tracks the narrative behind status changes.
 
 ## Status
 
-Milestone 6 of 10 done. Project scaffold, dependencies, agent core loop
+Milestone 7 of 10 done. Project scaffold, dependencies, agent core loop
 (OpenAI-based, post-pivot), tool schema, sandbox manager lifecycle, port
-publishing, and command/file endpoints + client + executor committed.
+publishing, command/file endpoints + client + executor, and snapshot/
+restore committed.
 
 ## What is actually built & live
 
@@ -22,6 +23,7 @@ publishing, and command/file endpoints + client + executor committed.
 | Self-sufficient pytest fixtures (Docker/API-key preconditions, image build, manager subprocess, per-test vm) | `tests/conftest.py` | done | Same test run + G4 subagent re-ran suite independently |
 | Port publishing (`publish_port` -> `host_port` on `create_vm`) | `sandbox/manager.py` | done | `pytest tests/test_manager_lifecycle.py -v` (6 passed) + manual curl/http.server end-to-end check + G4 subagent APPROVE |
 | Command/file endpoints (`run_command`, `write_file`, `read_file`) + `SandboxClient` + `ToolExecutor` | `sandbox/manager.py`, `sandbox/client.py`, `tools/executor.py` | done | `pytest tests/test_manager_commands_and_files.py -v` (5 passed) + full suite 12 passed + G4 subagent APPROVE |
+| Snapshot/restore (`snapshot_vm`, `restore_vm`, client methods) + leak-free image cleanup | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | done | `pytest tests/test_manager_snapshot_restore.py -v` (1 passed) + full suite 13 passed + confirmed no leaked `sandbox-snapshot` image + G4 subagent APPROVE |
 
 ## Deviations from plan (append-only)
 
@@ -32,12 +34,13 @@ publishing, and command/file endpoints + client + executor committed.
 
 ## Known gaps & ordered next list
 
-1. Run G0 + L1 BUILD on milestone 7 (snapshot & restore — Step 10). No divergence expected. Remember the plan's explicit note: test teardown must remove the `sandbox-snapshot:<tag>` image via the Docker SDK, not just the container — the guide's own manual test leaks this image.
-2. When milestone 8 (Step 11, full ReAct loop) is reached, remember the message-shape divergence already documented in decisions.md and implementation-plan.md (tool_calls, tool_call_id, JSON-string arguments needing `json.loads`).
-3. `tests/conftest.py`'s `vm` fixture is intentionally raw-HTTP-based (not `SandboxClient`) since its freeze boundary is milestone 4 only — this is fine; milestone 6's own tests instantiate `SandboxClient` directly where needed instead of changing the shared fixture.
+1. Run G0 + L1 BUILD on milestone 8 (full agent loop + run.py — Step 11). This is where the OpenAI message-shape divergence (tool_calls, tool_call_id, JSON-string arguments needing `json.loads`) actually gets implemented — already documented in decisions.md and implementation-plan.md. No new pytest for this milestone per the plan (nondeterministic/token-costly, out of decisions.md's pytest scope); verify manually via `uvicorn sandbox.manager:app --port 8000` + `python3 run.py`.
+2. `tests/conftest.py`'s `vm` fixture is intentionally raw-HTTP-based (not `SandboxClient`) since its freeze boundary is milestone 4 only — this is fine; later milestones' own tests instantiate `SandboxClient` directly where needed instead of changing the shared fixture.
+3. Milestone 9 (Step 12) needs `SANDBOX_RUNTIME_OPTS` applied to BOTH `create_vm` and `restore_vm` — easy to miss the second one, called out explicitly in the plan and invariant 5.
 
 ## Session log (append-only, newest first)
 
+- 2026-09-11 — Milestone 7 (snapshot & restore) built, verified (G4 APPROVE — the verify subagent independently re-ran the test, checked directly for the snapshot-image leak, and re-ran the full suite), and committed as `7181c20`. No divergence from the guide. `snapshot_vm`/`restore_vm` and client `snapshot`/`restore` methods added exactly per guide. `tests/test_manager_snapshot_restore.py` reproduces the bug-then-restore scenario with a dedicated `snapshot_tag` fixture that removes the `sandbox-snapshot:<tag>` image via the Docker SDK in teardown — confirmed no leaked image after the run (`docker images | grep sandbox-snapshot` empty). `pytest tests/test_manager_snapshot_restore.py -v` → 1 passed; full suite → 13 passed, no regressions.
 - 2026-09-11 — Milestone 6 (command/file endpoints + client + executor) built, verified (G4 APPROVE — the verify subagent independently re-ran both the milestone's tests and the full suite), and committed as `1f280cc`. No divergence from the guide — `sandbox/client.py` and `tools/executor.py` are provider-agnostic, unaffected by the OpenAI pivot. `run_command`/`write_file`/`read_file` added to the manager; `SandboxClient` and `ToolExecutor` introduced exactly per guide. `pytest tests/test_manager_commands_and_files.py -v` → 5 passed; full suite → 12 passed, no regressions.
 - 2026-09-11 — Milestone 5 (storage/networking + port publishing) built, verified (G4 APPROVE — the verify subagent independently re-ran both pytest and the guide's own manual curl/http.server check), and committed as `4af37df`. No divergence from the guide. `create_vm` gains `publish_port`/`host_port`; two new pytest cases added to `tests/test_manager_lifecycle.py` (6 passed total). Manual end-to-end check confirmed real host→NAT→bridge→sandbox port routing (curled a real HTML directory listing back from a container-internal `http.server`).
 - 2026-09-11 — Milestone 4 (sandbox manager lifecycle + Dockerfile) built, verified (G4 APPROVE — the verify subagent re-ran the test suite itself), and committed as `e6c0ac0`. No divergence from the guide (sandbox layer never touches an LLM SDK). `tests/conftest.py` introduced as the one-shot, self-sufficient fixture file for the rest of the suite (fail-loud Docker/API-key preconditions, auto image build, manager subprocess with health polling, per-test `vm` fixture). `pytest tests/test_manager_lifecycle.py -v` → 4 passed (first run built `ai-sandbox:latest` in ~2m15s; reruns ~1.5s). No leftover containers after any run.

@@ -52,7 +52,7 @@ plan time. Freeze boundary = the only paths a milestone may touch.
 | 4 | Sandbox manager lifecycle + Dockerfile | 7 | `sandbox/Dockerfile`, `sandbox/manager.py`, `tests/conftest.py`, `tests/test_manager_lifecycle.py` | `pytest tests/test_manager_lifecycle.py -v` | done |
 | 5 | Storage/networking + port publishing | 8 | `sandbox/manager.py` (`create_vm`), `tests/test_manager_lifecycle.py` | `curl -X POST "http://localhost:8000/vms?publish_port=8080"` + pytest case | done |
 | 6 | Command/file endpoints + client + executor | 9 | `sandbox/manager.py`, `sandbox/client.py`, `tools/executor.py`, `tests/test_manager_commands_and_files.py` | `pytest tests/test_manager_commands_and_files.py -v` | done |
-| 7 | Snapshot & restore | 10 | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | `pytest tests/test_manager_snapshot_restore.py -v` | pending |
+| 7 | Snapshot & restore | 10 | `sandbox/manager.py`, `sandbox/client.py`, `tests/test_manager_snapshot_restore.py` | `pytest tests/test_manager_snapshot_restore.py -v` | done |
 | 8 | Full agent loop + run.py | 11 | `agent/agent.py`, `run.py` | `python3 run.py` (manager running in a second terminal) | pending |
 | 9 | Security hardening + scaling notes | 12-13 | `sandbox/manager.py` (`SANDBOX_RUNTIME_OPTS`), `tests/test_manager_security.py` | `pytest tests/test_manager_security.py -v` | pending |
 | 10 | Consolidation: demo_snapshot.py + README | 14-16 | `demo_snapshot.py`, `README.md` | `python3 demo_snapshot.py` + full verification sequence below | pending |
